@@ -6,41 +6,37 @@ dbconnection = psycopg2.connect("dbname=news")
 cursor = dbconnection.cursor()
 
 cursor.execute("""
-               select articles.title, count(path) as views
+               select title, count(*) as views
                  from articles
                       join log
-                      on log.path like '%' || articles.slug || '%'
-                group by articles.title
+                      on log.path = concat('/article/', articles.slug)
+                group by title
                 order by views desc
                 limit 3;
                 """)
 
-results = cursor.fetchall()
 
-print "What are the most popular three articles of all time?"
-print "\"" + str(results[0][0]) + "\" -- " + str(results[0][1]) + " views"
-print "\"" + str(results[1][0]) + "\" -- " + str(results[1][1]) + " views"
-print "\"" + str(results[2][0]) + "\" -- " + str(results[2][1]) + " views"
+print("Most popular articles:")
+for(title, count) in cursor.fetchall():
+    print("    {} - {} views".format(title, count))
+print("*" * 70)
 
 cursor.execute("""
-               select authors.name, count(path) as views
+               select authors.name, count(*) as views
                  from articles
                       join authors
                       on articles.author = authors.id
                       join log
-                      on log.path like '%' || articles.slug || '%'
+                      on log.path = concat('/article/', articles.slug)
                 group by authors.name
                 order by views desc;
                 """)
 
-results = cursor.fetchall()
-
-print ""
-print "Who are the most popular article authors of all time?"
-print str(results[0][0]) + " -- " + str(results[0][1]) + " views"
-print str(results[1][0]) + " -- " + str(results[1][1]) + " views"
-print str(results[2][0]) + " -- " + str(results[2][1]) + " views"
-print str(results[3][0]) + " -- " + str(results[3][1]) + " views"
+print(" ")
+print("Most popular authors:")
+for(author, count) in cursor.fetchall():
+    print("    {} - {} views".format(author, count))
+print("*" * 70)
 
 cursor.execute("""
                select day, percentage
@@ -57,12 +53,10 @@ cursor.execute("""
                 where percentage >= 1.0;
                """)
 
-results = cursor.fetchall()
+print(" ")
+print("Days with most errors:")
 
-print ""
-print "On which days did more than 1% of requests lead to errors?"
-
-for day in results:
-    print str(day[0]) + " -- " + str(day[1]) + "% errors"
+for day, percent in cursor.fetchall():
+    print("    {} - {:.2f}% errors".format(day, percent))
 
 dbconnection.close()
